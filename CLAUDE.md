@@ -33,42 +33,91 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `backend/internal/sensitive/` 配下は常に人間レビュー必須。委譲ラインがどれだけ広がってもこの境界は外れない。
 
+## ローカル開発
+
+### 起動
+
+```bash
+cp .env.example .env        # 初回のみ
+docker-compose up --build   # db / backend / frontend を一括起動
+```
+
+| サービス | URL |
+|---|---|
+| フロントエンド | http://localhost:5173 |
+| バックエンドAPI | http://localhost:8080 |
+| PostgreSQL | localhost:5432 |
+
+### バックエンド単体
+
+```bash
+cd backend
+go build ./...          # ビルド確認
+go test ./...           # テスト
+go run ./cmd/server     # 単体起動（要 .env）
+```
+
+air（ホットリロード）は docker-compose 経由で自動的に有効になる。
+
+### フロントエンド単体
+
+```bash
+cd frontend
+npm install
+npm run dev     # 開発サーバー（http://localhost:5173）
+npm run build   # プロダクションビルド
+npm run lint    # ESLint
+```
+
 ## アーキテクチャ
 
 React（SPA）+ Go（Echo）の**完全分離構成**。デプロイ・スケール・障害の単位を分離し、AIが影響範囲を切り分けて独立に対応できることを土台とする。
 
 | 層 | 技術 |
 |---|---|
-| フロント | React / Vite / Zustand / Tailwind CSS / TanStack Query + axios |
+| フロント | React / Vite / Zustand / Tailwind CSS v4 / TanStack Query + axios |
 | バック | Go（Echo）/ PostgreSQL / sqlc / swaggo/swag（Swagger UI）|
 | インフラ | S3 + CloudFront（SPA）/ ECS（API）/ GitHub Actions |
 
-### フロントエンド設計方針
-- コンポーネント: Atomic Design × Feature-First
-- テスト: Playwright（E2E・Unit）/ Storybook + Chromatic（Visual Regression）
-
-### バックエンド設計方針
-- DBアクセス: sqlc（型安全・自動生成）。生SQLは書かず、スキーマからGoコードを生成する
-- API契約: OpenAPIを単一真実源とし、Goハンドラ型・TS型を一方向生成する。契約違反はビルドで検出
-- レスポンス形式: 共通ラップ（`success`, `data`, `error`）
-- ログ: rs/zerolog による構造化ログ。AIの意思決定ログを独立した種別として記録する
-
-### ディレクトリ構成（予定）
+### ディレクトリ構成
 
 ```
 spa-echo-api/
-├── AI_DEVELOPMENT_GOVERNANCE.md  # 最上位ルール
-├── docker-compose.yml            # ローカル開発用（DB含む）
+├── AI_DEVELOPMENT_GOVERNANCE.md
+├── docker-compose.yml
+├── .env.example
 ├── .github/
-│   ├── workflows/                # GitHub Actions（CI/CD）
-│   └── copilot-instructions.md  # ガバナンス参照導線
+│   ├── workflows/
+│   └── copilot-instructions.md
 ├── docs/
-│   └── adr/                     # Architecture Decision Records
-├── frontend/                    # React + Vite
-└── backend/                     # Go + Echo
-    └── internal/
-        └── sensitive/           # センシティブ領域（常に人間レビュー必須）
+│   └── adr/
+├── frontend/
+│   ├── src/
+│   │   ├── main.tsx
+│   │   ├── App.tsx
+│   │   └── index.css        # @import "tailwindcss" 先頭に配置
+│   ├── vite.config.ts       # @tailwindcss/vite プラグイン設定済み
+│   └── package.json
+└── backend/
+    ├── cmd/server/main.go   # エントリポイント
+    ├── internal/
+    │   ├── handler/         # Echoハンドラ
+    │   ├── middleware/      # zerologロガー等
+    │   ├── response/        # 共通ラップ { success, data, error }
+    │   └── sensitive/       # センシティブ領域（常に人間レビュー必須）
+    ├── .air.toml            # ホットリロード設定
+    └── go.mod               # module: github.com/shotagoto/spa-echo-api/backend
 ```
+
+### バックエンド設計方針
+- **レスポンス形式**: 全APIで `internal/response` の共通ラップを使う（`success` / `data` / `error`）
+- **DBアクセス**: sqlc（型安全・自動生成）。生SQLは書かず、スキーマからGoコードを生成する
+- **API契約**: OpenAPIを単一真実源とし、Goハンドラ型・TS型を一方向生成する。契約違反はビルドで検出
+- **ログ**: rs/zerolog による構造化ログ。AIの意思決定ログを独立した種別として記録する
+
+### フロントエンド設計方針
+- **コンポーネント**: Atomic Design × Feature-First
+- **テスト**: Playwright（E2E・Unit）/ Storybook + Chromatic（Visual Regression）
 
 ## ADRの参照方法
 
