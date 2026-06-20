@@ -1,122 +1,136 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import api from './lib/api'
 
-function App() {
-  const [count, setCount] = useState(0)
+function StatusBadge() {
+  const { data, isError, isPending } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => api.get('/health').then(r => r.data),
+    refetchInterval: 10_000,
+  })
+
+  if (isPending) {
+    return (
+      <span className="flex items-center gap-2 text-sm text-slate-400">
+        <span className="h-2 w-2 rounded-full bg-slate-500 animate-pulse" />
+        確認中...
+      </span>
+    )
+  }
+
+  if (isError || !data?.success) {
+    return (
+      <span className="flex items-center gap-2 text-sm text-red-400">
+        <span className="h-2 w-2 rounded-full bg-red-500" />
+        API 未接続
+      </span>
+    )
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <span className="flex items-center gap-2 text-sm text-emerald-400">
+      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+      API 接続中
+    </span>
   )
 }
 
-export default App
+function EchoForm() {
+  const [input, setInput] = useState('')
+  const [result, setResult] = useState<string | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: (message: string) =>
+      api.post('/api/v1/echo', { message }).then(r => r.data),
+    onSuccess: data => {
+      setResult(data.data?.message ?? null)
+    },
+    onError: () => {
+      setResult(null)
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim()) return
+    mutation.mutate(input.trim())
+  }
+
+  return (
+    <div className="w-full max-w-lg">
+      <form onSubmit={handleSubmit} className="flex gap-3">
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="メッセージを入力..."
+          className="flex-1 rounded-lg bg-slate-800 border border-slate-700 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-indigo-500 transition"
+        />
+        <button
+          type="submit"
+          disabled={mutation.isPending || !input.trim()}
+          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          {mutation.isPending ? '送信中...' : '送信'}
+        </button>
+      </form>
+
+      {mutation.isError && (
+        <p className="mt-3 text-sm text-red-400">
+          エラー: APIに接続できません
+        </p>
+      )}
+
+      {result !== null && !mutation.isError && (
+        <div className="mt-4 rounded-lg bg-slate-800 border border-slate-700 px-4 py-3">
+          <p className="text-xs text-slate-500 mb-1">エコー応答</p>
+          <p className="text-slate-100">{result}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <span className="font-semibold text-slate-100 tracking-tight">spa-echo-api</span>
+        <StatusBadge />
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center gap-10 px-6 py-16">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-slate-100 mb-3 tracking-tight">
+            React SPA + Go Echo
+          </h1>
+          <p className="text-slate-400 text-lg">
+            フロントエンドとバックエンドが接続されたサンプルサイト
+          </p>
+        </div>
+
+        <div className="flex flex-col items-center gap-3 w-full max-w-lg">
+          <p className="text-sm text-slate-500 self-start">エコー API を試す</p>
+          <EchoForm />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 w-full max-w-lg mt-4">
+          {[
+            { label: 'フロント', value: 'React + Vite' },
+            { label: 'バック', value: 'Go + Echo' },
+            { label: 'DB', value: 'PostgreSQL' },
+          ].map(item => (
+            <div key={item.label} className="rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">{item.label}</p>
+              <p className="text-sm text-slate-200 font-medium">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      <footer className="border-t border-slate-800 px-6 py-4 text-center text-xs text-slate-600">
+        spa-echo-api — AI自律開発サンプル
+      </footer>
+    </div>
+  )
+}

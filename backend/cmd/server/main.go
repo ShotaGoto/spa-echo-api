@@ -29,6 +29,9 @@ func main() {
 
 	e.GET("/health", handler.Health)
 
+	api := e.Group("/api/v1")
+	api.POST("/echo", handler.EchoMessage)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
