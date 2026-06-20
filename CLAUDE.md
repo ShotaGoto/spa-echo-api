@@ -59,14 +59,24 @@ go run ./cmd/server     # 単体起動（要 .env）
 
 air（ホットリロード）は docker-compose 経由で自動的に有効になる。
 
+### バックエンドコード生成
+
+```bash
+cd backend
+$(go env GOPATH)/bin/sqlc generate          # DBスキーマ変更後に実行
+$(go env GOPATH)/bin/swag init -g cmd/server/main.go -o docs  # ハンドラ変更後に実行
+```
+
 ### フロントエンド単体
 
 ```bash
 cd frontend
 npm install
-npm run dev     # 開発サーバー（http://localhost:5173）
-npm run build   # プロダクションビルド
-npm run lint    # ESLint
+npm run dev            # 開発サーバー（http://localhost:5173）
+npm run build          # プロダクションビルド
+npm run lint           # ESLint
+npm run storybook      # Storybook（http://localhost:6006）
+npm run test:e2e       # Playwright E2Eテスト
 ```
 
 ## アーキテクチャ
@@ -93,20 +103,38 @@ spa-echo-api/
 │   └── adr/
 ├── frontend/
 │   ├── src/
-│   │   ├── main.tsx
+│   │   ├── components/
+│   │   │   ├── atoms/       # Button, Textarea, Badge
+│   │   │   ├── molecules/   # MessageCard, MessageForm
+│   │   │   └── organisms/   # MessageBoard
+│   │   ├── features/
+│   │   │   └── messages/
+│   │   │       ├── api/     # messagesApi.ts（axios）
+│   │   │       └── hooks/   # useMessages.ts（TanStack Query）
+│   │   ├── store/           # uiStore.ts（Zustand）
+│   │   ├── lib/api.ts       # axiosインスタンス
 │   │   ├── App.tsx
-│   │   └── index.css        # @import "tailwindcss" 先頭に配置
-│   ├── vite.config.ts       # @tailwindcss/vite プラグイン設定済み
+│   │   └── index.css
+│   ├── tests/e2e/           # Playwright E2Eテスト
+│   ├── .storybook/          # Storybook設定
+│   ├── playwright.config.ts
 │   └── package.json
 └── backend/
-    ├── cmd/server/main.go   # エントリポイント
+    ├── cmd/server/main.go   # エントリポイント（swag対象）
+    ├── db/
+    │   ├── schema.sql        # PostgreSQLスキーマ（docker-compose init用）
+    │   └── queries/          # sqlcクエリ定義
+    ├── docs/                 # swag生成（コミット対象）
     ├── internal/
-    │   ├── handler/         # Echoハンドラ
-    │   ├── middleware/      # zerologロガー等
-    │   ├── response/        # 共通ラップ { success, data, error }
-    │   └── sensitive/       # センシティブ領域（常に人間レビュー必須）
-    ├── .air.toml            # ホットリロード設定
-    └── go.mod               # module: github.com/shotagoto/spa-echo-api/backend
+    │   ├── db/               # sqlc生成コード（コミット対象）
+    │   ├── handler/          # Echoハンドラ
+    │   ├── middleware/       # zerologロガー
+    │   ├── response/         # 共通ラップ { success, data, error }
+    │   ├── validator/        # go-playground/validator ラッパー
+    │   └── sensitive/        # センシティブ領域（常に人間レビュー必須）
+    ├── sqlc.yaml
+    ├── .air.toml
+    └── go.mod                # module: github.com/shotagoto/spa-echo-api/backend
 ```
 
 ### バックエンド設計方針

@@ -1,0 +1,140 @@
+basePath: /
+definitions:
+  handler.CreateMessageRequest:
+    properties:
+      content:
+        maxLength: 500
+        minLength: 1
+        type: string
+    required:
+    - content
+    type: object
+  handler.EchoRequest:
+    properties:
+      message:
+        type: string
+    type: object
+  response.Error:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/response.Error'
+      success:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: React SPA + Go Echo のサンプルAPI
+  title: spa-echo-api
+  version: "1.0"
+paths:
+  /api/v1/echo:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: メッセージ
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.EchoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: メッセージをエコーする
+      tags:
+      - echo
+  /api/v1/messages:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: メッセージ一覧を取得
+      tags:
+      - messages
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: メッセージ内容
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: メッセージを投稿
+      tags:
+      - messages
+  /api/v1/messages/{id}:
+    delete:
+      parameters:
+      - description: メッセージID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: メッセージを削除
+      tags:
+      - messages
+  /health:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: ヘルスチェック
+      tags:
+      - system
+swagger: "2.0"
