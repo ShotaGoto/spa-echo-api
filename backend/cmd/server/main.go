@@ -62,6 +62,7 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 	e.Validator = validator.New()
+	e.HTTPErrorHandler = middleware.ErrorHandler
 
 	e.Use(echoMiddleware.Recover())
 	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
