@@ -3,6 +3,7 @@
   bin = "./tmp/server"
   include_ext = ["go"]
   exclude_dir = ["tmp", "vendor"]
+  include_dir = ["cmd", "internal", "db"]
   delay = 500
 
 [log]

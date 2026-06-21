@@ -7,8 +7,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -24,13 +28,30 @@ import (
 	_ "github.com/shotagoto/spa-echo-api/backend/docs"
 )
 
+func runMigrations(databaseURL string) {
+	m, err := migrate.New("file://db/migrations", "pgx5://"+databaseURL[len("postgres://"):])
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to initialize migrations")
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatal().Err(err).Msg("migration failed")
+	}
+	log.Info().Msg("migrations applied")
+}
+
 func main() {
 	_ = godotenv.Load()
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	databaseURL := os.Getenv("DATABASE_URL")
+
+	runMigrations(databaseURL)
+
+	conn, err := pgx.Connect(context.Background(), databaseURL)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to database")
 	}
